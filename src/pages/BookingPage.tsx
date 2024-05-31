@@ -1,35 +1,30 @@
-import {
-    Title,
-    Text,
-    Container,
-    SimpleGrid,
-    Skeleton,
-    Stack,
-    Paper,
-    Table,
-    Checkbox,
-    Box,
-    UnstyledButton,
-    Button,
-    Group,
-} from '@mantine/core'
-import {useState} from 'react'
+import {Text, SimpleGrid, Stack, UnstyledButton, Button, Group, rem, CloseButton, SegmentedControl} from '@mantine/core'
+import {useEffect, useState} from 'react'
 import classes from '../css/TimetableTile.module.css'
 import {create} from 'zustand'
+import {useQuery} from '@tanstack/react-query'
+import RehearsalService from '../services/RehearsalService'
+import dayjs from 'dayjs'
+import isoweek from 'dayjs/plugin/isoWeek'
+import {RehearsalRead} from '../models/Rehearsal'
+import {ModalContainer} from '../components/modals/ModalContainer'
+import {useDisclosure} from '@mantine/hooks'
+import BookRehearsalModal from '../components/modals/BookRehearsalModal'
+dayjs.extend(isoweek)
 
 interface BookingState {
     startIndex: number | undefined
     endIndex: number | undefined
-    day: string | undefined
+    day: number | undefined
     setStartIndex: (index: number) => void
     setEndIndex: (index: number) => void
-    setDay: (name: string) => void
-    handleSelect: (selectedDay: string, selectedIndex: number) => void
+    setDay: (dow: number) => void
+    handleSelect: (selectedDay: number, selectedIndex: number) => void
     resetSelection: () => void
-    isChecked: (day: string, index: number) => boolean
+    isChecked: (day: number, index: number) => boolean
 }
 
-const useBookingStore = create<BookingState>()((set, get) => ({
+export const useBookingStore = create<BookingState>()((set, get) => ({
     startIndex: undefined,
     endIndex: undefined,
     day: undefined,
@@ -82,85 +77,165 @@ interface TileProps {
 function Tile({label, clickHandler, checked, bookedBy}: Readonly<TileProps>) {
     return (
         <div className={classes.root}>
-            <UnstyledButton className={classes.control} data-checked={checked || undefined} onClick={clickHandler} disabled={!!bookedBy}>
+            <UnstyledButton
+                className={classes.control}
+                data-checked={checked || undefined}
+                onClick={clickHandler}
+                disabled={!!bookedBy}
+            >
                 <Text className={classes.label}>{label}</Text>
-                <Text className={classes.description}>{bookedBy || "Свободно"}</Text>
+                <Text className={classes.description}>{bookedBy || 'Свободно'}</Text>
             </UnstyledButton>
         </div>
     )
 }
 
 interface DayProps {
-    height: number
-    resetSelection: () => void
-    name: string
-    times: string[]
+    day: {dow: number; name: string}
+    times: {hour: number; label: string}[]
+    bookings: RehearsalRead[] | undefined
 }
 
-function Day({height, resetSelection, name, times}: DayProps) {
+function Day({day, times, bookings}: DayProps) {
     const startIndex = useBookingStore((state) => state.startIndex)
     const endIndex = useBookingStore((state) => state.endIndex)
     const selectedDay = useBookingStore((state) => state.day)
     const handleSelect = useBookingStore((state) => state.handleSelect)
+    //console.log(name, bookings)
+    function bookedBy(time: number) {
+        const found = bookings?.find(
+            (booking) =>
+                dayjs(booking.start_time).hour() <= time && time < dayjs(booking.start_time).hour() + booking.duration
+        )
+        return found?.band_name
+    }
 
     const tiles = times.map((time, index) => {
         return (
             <Tile
-                label={time}
+                label={time.label}
                 checked={
-                    name === selectedDay &&
+                    day.dow === selectedDay &&
                     startIndex != undefined &&
                     endIndex != undefined &&
                     index <= endIndex &&
                     index >= startIndex
                 }
-                clickHandler={() => handleSelect(name, index)}
-                key={time}
-                bookedBy={undefined}
+                clickHandler={() => handleSelect(day.dow, index)}
+                key={time.hour}
+                bookedBy={bookedBy(time.hour)}
             />
         )
     })
     return (
-        <Stack gap='xs'>
-            <Text>{name}</Text>
+        <Stack gap={rem(2)}>
+            <Text>{day.name}</Text>
             {tiles}
         </Stack>
     )
 }
 
 function BookingPage() {
-    const height = 50
+    const [bookModalOpened, bookModalHandlers] = useDisclosure(false)
+    const [currentWeek, setCurrentWeek] = useState<number>(dayjs().isoWeek())
+    useEffect(() => {
+        setCurrentWeek(dayjs().isoWeek())
+    }, [])
 
-    const times = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
-    const days = ['Поебельник', 'Вротник', 'Перда', 'Шитверг', 'Пяница', 'Субта']
+    const availableHours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    const times = availableHours.map((hour) => {
+        return {hour: hour, label: dayjs().hour(hour).minute(0).format('HH:mm')}
+    })
+    const availableDays = [1, 2, 3, 4, 5, 6]
+    const daysLabels = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+    const days = availableDays.map((dow, index) => {
+        return {dow: dow, name: `${daysLabels[index]} ${dayjs().isoWeek(currentWeek).isoWeekday(dow).format('DD.MM')}`}
+    })
     const startIndex = useBookingStore((state) => state.startIndex)
     const endIndex = useBookingStore((state) => state.endIndex)
     const day = useBookingStore((state) => state.day)
+    const [startTime, setStartTime] = useState<string>('00:00')
+
     const resetSelection = useBookingStore((state) => state.resetSelection)
+    const bookingsQuery = useQuery({
+        queryKey: ['bookings', currentWeek],
+        queryFn: () =>
+            RehearsalService.fetchRehearsals(
+                undefined,
+                undefined,
+                dayjs().isoWeek(currentWeek).startOf('isoWeek').format(),
+                dayjs().isoWeek(currentWeek).endOf('isoWeek').format()
+            ),
+    })
+    //console.log(currentWeek, dayjs().startOf('isoWeek').format(), bookingsQuery.data)
     return (
         <div>
-            <Title order={3}>Бронирование репетиций</Title>
             <Group>
                 {startIndex != undefined && endIndex != undefined && (
-                    <Text>
-                        ыыы: {day}, {times[startIndex]} - {times[endIndex]}
-                    </Text>
+                    <>
+                        <Text>
+                            Выбранное время: {days[day! - 1].name}, {times[startIndex].label} - {times[endIndex].label},{' '}
+                            {endIndex - startIndex + 1} ч
+                        </Text>
+                        <CloseButton onClick={resetSelection} />
+                    </>
                 )}
                 <Button
                     onClick={() => {
-                        console.log(day, times[startIndex!], endIndex! - startIndex! + 1)
-                        resetSelection()
+                        const start_time = dayjs()
+                            .isoWeek(currentWeek)
+                            .isoWeekday(day!)
+                            .hour(availableHours[startIndex!])
+                            .minute(0)
+                            .second(0)
+                            .format()
+                        console.log(day, times[startIndex!], endIndex! - startIndex! + 1, start_time)
+                        // bookingMutation.mutate({
+                        //     band_name: 'pizda',
+                        //     duration: endIndex! - startIndex! + 1,
+                        //     participants: ['Зуевичков'],
+                        //     start_time: start_time,
+                        // })
+                        setStartTime(start_time)
+                        bookModalHandlers.open()
+                        //resetSelection()
                     }}
                     disabled={startIndex === undefined || endIndex === undefined}
                 >
-                    ВШТАНАТЬ НАСРЫ
+                    Забронировать
                 </Button>
+                <SegmentedControl
+                    value={currentWeek === dayjs().isoWeek() ? 'current' : 'next'}
+                    onChange={(value) =>
+                        setCurrentWeek(value === 'current' ? dayjs().isoWeek() : dayjs().isoWeek() + 1)
+                    }
+                    data={[
+                        {label: 'Текущая неделя', value: 'current'},
+                        {label: 'Следующая неделя', value: 'next'},
+                    ]}
+                />
             </Group>
-            <SimpleGrid cols={{base: 1, xs: 7}} spacing='xs'>
-                {days.map((day) => {
-                    return <Day key={day} height={height} resetSelection={console.log} name={day} times={times} />
+            <SimpleGrid cols={{base: 1, xs: 7}} spacing={rem(2)}>
+                {days.map((day, index) => {
+                    return (
+                        <Day
+                            key={day.dow}
+                            day={day}
+                            times={times}
+                            bookings={bookingsQuery.data?.rehearsalArray.filter(
+                                (booking) => dayjs(booking.start_time).isoWeekday() === index + 1
+                            )}
+                        />
+                    )
                 })}
             </SimpleGrid>
+            <ModalContainer title='Забронировать репетицию' opened={bookModalOpened} onClose={bookModalHandlers.close}>
+                <BookRehearsalModal
+                    duration={endIndex! - startIndex! + 1}
+                    start_time={startTime}
+                    close={bookModalHandlers.close}
+                />
+            </ModalContainer>
         </div>
     )
 }

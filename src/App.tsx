@@ -3,7 +3,7 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import ProfilePage from './pages/ProfilePage'
 import UsersPage from './pages/UsersPage'
-import StatsPage from './pages/StatsPage'
+import RulesPage from './pages/RulesPage'
 import {Routes, Route, Outlet, Link, useLocation} from 'react-router-dom'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
@@ -13,10 +13,10 @@ import {useDisclosure} from '@mantine/hooks'
 import classes from './css/Navbar.module.css'
 import {LZIcon} from './assets/LZicon'
 import UserStatus from './components/UserStatus'
-import RoomProfile from './pages/RoomProfile'
-import NewsPage from './pages/NewsPage'
 import AboutPage from './pages/AboutPage'
 import BookingPage from './pages/BookingPage'
+import RequirePermissionToDisplay from './components/RequirePermissionToDisplay'
+import PostPage from './pages/PostPage'
 
 function App() {
     return (
@@ -30,10 +30,10 @@ function App() {
                 <Route path='/about' element={<AboutPage />} />
                 <Route path='/users' element={<UsersPage />} />
                 <Route path='/news'>
-                    <Route path='' element={<NewsPage />} />
-                    <Route path=':postId' element={<RoomProfile />} />
+                    <Route path='' element={<HomePage />} />
+                    <Route path=':postId' element={<PostPage />} />
                 </Route>
-                <Route path='/rules' element={<StatsPage />} />
+                <Route path='/rules' element={<RulesPage />} />
             </Route>
         </Routes>
     )
@@ -46,7 +46,7 @@ function Layout() {
         {page: 'Новости', to: '/news'},
         {page: 'История', to: '/about'},
         {page: 'Правила', to: '/rules'},
-        {page: 'Пользователи', to: '/users'},
+        {page: 'Пользователи', to: '/users', permission: 'user_read'},
     ]
     const location = useLocation()
 
@@ -64,16 +64,17 @@ function Layout() {
                             <LZIcon size={40} />
                             <Group ml='xl' gap={0} visibleFrom='sm'>
                                 {link.map((link) => (
-                                    <UnstyledButton
-                                        component={Link}
-                                        to={link.to}
-                                        className={
-                                            link.to != location.pathname ? classes.control : classes.controlactive
-                                        }
-                                        key={link.page}
-                                    >
-                                        {link.page}
-                                    </UnstyledButton>
+                                    <RequirePermissionToDisplay permission={link.permission} key={link.page}>
+                                        <UnstyledButton
+                                            component={Link}
+                                            to={link.to}
+                                            className={
+                                                link.to != location.pathname ? classes.control : classes.controlactive
+                                            }
+                                        >
+                                            {link.page}
+                                        </UnstyledButton>
+                                    </RequirePermissionToDisplay>
                                 ))}
                                 <UserStatus />
                             </Group>

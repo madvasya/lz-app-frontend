@@ -5,7 +5,7 @@ export interface RehearsalParticipant{
 
 export interface RehearsalCreate{
     participants: string[]
-    start_time: Date
+    start_time: string
     duration: number
     band_name: string
 }

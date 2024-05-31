@@ -2,6 +2,7 @@ import {AxiosResponse} from 'axios'
 import $api from '../api/axios'
 import {User, UserCreate, UserUpdate} from '../models/User'
 import {Role} from '../models/Role'
+import { RehearsalRead } from '../models/Rehearsal'
 
 const ME_URL = '/users/me'
 const USERS_URL = '/users'
@@ -10,6 +11,13 @@ export default class UserService {
     static async fetchUserMe(): Promise<User> {
         const response = await $api.get(ME_URL)
         return response.data
+    }
+
+    static async fetchRehearsalsMy(archive: boolean, limit: number, offset: number): Promise<{rehearsalArray: RehearsalRead[]; count: number}>{
+        const response = await $api.get(`${ME_URL}/rehearsals`, {params: {archive, limit, offset}})
+        const rehearsalArray = response.data
+        const count = response.headers['x-total-count']
+        return {rehearsalArray, count}
     }
 
     static async fetchUsers(limit: number, offset: number, order_list?: string): Promise<AxiosResponse<User[]>> {

@@ -31,7 +31,8 @@ function LoginPage() {
             await login(user, pwd)
             setUser('')
             setPwd('')
-            navigate(from, {replace: true})
+            //navigate(from, {replace: true})
+            navigate('/', {replace: true})
         } catch (err: any) {
             //console.log(err)
             //console.log(err.response?.data?.detail)

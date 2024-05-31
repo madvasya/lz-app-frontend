@@ -17,7 +17,7 @@ export default function SortedTh({children, reversed, sorted, onSort}: ThProps) 
             <Group justify='space-between'>
                 {children}
                 <Center className={classes.icon}>
-                    <Icon style={{width: rem(16), height: rem(16)}} stroke={1.5} />
+                    <Icon style={{width: (16), height: rem(16)}} stroke={1.5} />
                 </Center>
             </Group>
             {/* </UnstyledButton> */}

@@ -7,15 +7,15 @@ export default class RehearsalService {
     static async fetchRehearsals(
         limit?: number,
         offset?: number,
-        filter_from?: Date,
-        filter_to?: Date
-    ): Promise<{deviceArray: RehearsalRead[]; count: number}> {
+        filter_from?: string,
+        filter_to?: string
+    ): Promise<{rehearsalArray: RehearsalRead[]; count: number}> {
         const response = await $api.get(REHEARSALS_URL, {
             params: {limit, offset, filter_from, filter_to},
         })
-        const deviceArray = response.data
+        const rehearsalArray = response.data
         const count = response.headers['x-total-count']
-        return {deviceArray, count}
+        return {rehearsalArray, count}
     }
 
     static async createRehearsal(newRehearsal: RehearsalCreate): Promise<RehearsalRead> {

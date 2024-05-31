@@ -1,7 +1,6 @@
 import {useRef, useState} from 'react'
 import {useForm} from '@mantine/form'
 import {TextInput, PasswordInput, Text, Box, Button, Group} from '@mantine/core'
-import {randomId} from '@mantine/hooks'
 import {UserCreate} from '../../models/User'
 import UserService from '../../services/UserService'
 import {notifications} from '@mantine/notifications'
@@ -73,19 +72,7 @@ export default function UserCreateModal({close}: {close: () => void}) {
                 <Text ref={errRef} className={errMsg ? '' : 'invisible'} aria-live='assertive'>
                     {errMsg}
                 </Text>
-                <Group justify='flex-start' mt='xl'>
-                    <Button
-                        variant='outline'
-                        onClick={() =>
-                            form.setValues({
-                                username: randomId(),
-                                email: `${randomId()}@iot.com`,
-                                full_name: randomId(),
-                            })
-                        }
-                    >
-                        Сгенерировать
-                    </Button>
+                <Group justify='flex-start' mt='xl' grow>
                     <Button type='submit'>Добавить</Button>
                 </Group>
             </form>
